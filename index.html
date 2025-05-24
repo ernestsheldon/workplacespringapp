@@ -456,6 +456,9 @@
                     resultSumDisplay.textContent = sum.toFixed(2);
                     showMessage("Calculation successful! Animating garage door...", "success");
 
+                    // Scroll to the canvas element
+                    canvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
                     // Start garage door animation
                     initiateDoorAnimation();
 
