@@ -31,39 +31,53 @@
         .copyright a:hover {
             text-decoration: underline;
         }
+
+        /* Canvas styling to make it responsive */
+        canvas {
+            display: block;
+            background-color: #f0f0f0; /* Light background for the garage scene */
+            border: 2px solid #a0a0a0; /* Border for the garage structure */
+            border-radius: 8px;
+            margin-bottom: 20px;
+            width: 100%; /* Make canvas width fluid */
+            max-width: 400px; /* Max width to keep it contained on larger screens */
+            height: 200px; /* Fixed height for the scene */
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-300 to-gray-500 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gradient-to-br from-gray-300 to-gray-500 min-h-screen flex flex-col items-center justify-center p-4">
     <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md space-y-6 border border-gray-300">
         <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-6">Spring Length Calculator</h1>
 
-        <div class="space-y-4">
+        <canvas id="garageDoorCanvas"></canvas>
+
+        <div class="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-300 text-center" style="display: none;">
+            <p class="text-sm font-medium text-gray-700">Calculated Spring Value:</p>
+            <p id="result-sum" class="text-2xl font-bold text-gray-800 mt-1">0.00</p>
+        </div>
+
+        <div class="space-y-3">
             <div>
                 <label for="input-id" class="block text-sm font-medium text-gray-700 mb-1">ID (e.g., Spring Diameter):</label>
-                <input type="number" id="input-id" placeholder="Enter ID value"
-                       class="w-full px-4 py-2 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out">
+                <input type="number" id="input-id" placeholder="Enter ID value" step="any"
+                       class="w-full px-3 py-1.5 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out text-sm">
             </div>
             <div>
                 <label for="input-wiresize" class="block text-sm font-medium text-gray-700 mb-1">Wire Size (e.g., Wire Diameter):</label>
-                <input type="number" id="input-wiresize" placeholder="Enter wire size value"
-                       class="w-full px-4 py-2 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out">
+                <input type="number" id="input-wiresize" placeholder="Enter wire size value" step="any"
+                       class="w-full px-3 py-1.5 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out text-sm">
             </div>
             <div>
                 <label for="input-springlength" class="block text-sm font-medium text-gray-700 mb-1">Spring Length (e.g., Coil Length):</label>
-                <input type="number" id="input-springlength" placeholder="Enter spring length value"
-                       class="w-full px-4 py-2 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out">
+                <input type="number" id="input-springlength" placeholder="Enter spring length value" step="any"
+                       class="w-full px-3 py-1.5 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out text-sm">
             </div>
         </div>
 
         <button id="calculate-button"
-                class="w-full bg-blue-700 text-white py-3 rounded-lg font-semibold text-lg hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition duration-150 ease-in-out shadow-md">
+                class="w-full bg-blue-700 text-white py-2 rounded-lg font-semibold text-base hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition duration-150 ease-in-out shadow-md">
             Calculate Spring Value
         </button>
-
-        <div class="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-300 text-center">
-            <p class="text-sm font-medium text-gray-700">Calculated Spring Value:</p>
-            <p id="result-sum" class="text-2xl font-bold text-gray-800 mt-1">0.00</p>
-        </div>
 
         <div id="message-box" class="hidden p-3 rounded-lg text-sm text-center" role="alert"></div>
 
@@ -80,8 +94,315 @@
             const wiresizeInput = document.getElementById('input-wiresize');
             const springlengthInput = document.getElementById('input-springlength');
             const calculateButton = document.getElementById('calculate-button');
-            const resultSumDisplay = document.getElementById('result-sum');
+            const resultSumDisplay = document.getElementById('result-sum'); // Still used to get the value
             const messageBox = document.getElementById('message-box');
+
+            // Canvas elements
+            const canvas = document.getElementById('garageDoorCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Garage door animation variables
+            let doorOpenProgress = 0; // 0 = closed, 1 = open
+            let animationFrameId = null; // To store requestAnimationFrame ID
+            const openDuration = 1000; // 1 second to open
+            const pauseDuration = 15000; // 15 seconds pause at open
+            const closeDuration = 1000; // 1 second to close
+            let animationStartTime = null;
+            let animationPhase = 'closed'; // 'closed', 'opening', 'open_paused', 'closing'
+
+            let isFlashing = true; // Controls visibility for flashing
+            const flashInterval = 500; // Flash every 500ms
+            let lastFlashToggleTime = 0; // Timestamp of last flash toggle
+
+            // Set canvas dimensions based on its CSS size
+            function resizeCanvas() {
+                // Get the computed style of the canvas to get its actual rendered size
+                const computedStyle = getComputedStyle(canvas);
+                canvas.width = parseFloat(computedStyle.width);
+                canvas.height = parseFloat(computedStyle.height);
+                drawGarageScene(); // Redraw scene after resizing
+            }
+
+            // Draw the garage scene (wall, ground, door)
+            function drawGarageScene() {
+                // Clear the canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw the ground
+                ctx.fillStyle = '#8B4513'; // Brown color for ground
+                ctx.fillRect(0, canvas.height * 0.8, canvas.width, canvas.height * 0.2);
+
+                // Draw the main wall/garage structure
+                ctx.fillStyle = '#c0c0c0'; // Light grey for wall
+                ctx.fillRect(0, 0, canvas.width, canvas.height * 0.8);
+
+                // Define door opening dimensions
+                const openingWidth = canvas.width * 0.7;
+                const openingHeight = canvas.height * 0.7;
+                const openingX = (canvas.width - openingWidth) / 2;
+                const openingY = (canvas.height * 0.8) - openingHeight; // Top of the opening
+
+                // Draw the inside of the garage (visible when door is open)
+                if (doorOpenProgress > 0) {
+                    const interiorWidth = openingWidth;
+                    const interiorHeight = openingHeight;
+                    const interiorX = openingX;
+                    const interiorY = openingY;
+
+                    // Draw garage back wall (darker)
+                    ctx.fillStyle = '#666666'; // Dark grey for back wall
+                    ctx.fillRect(interiorX, interiorY, interiorWidth, interiorHeight);
+
+                    // Draw garage floor (even darker, receding perspective)
+                    ctx.fillStyle = '#333333'; // Very dark grey for floor
+                    ctx.beginPath();
+                    ctx.moveTo(interiorX, interiorY + interiorHeight); // Bottom-left of opening
+                    ctx.lineTo(interiorX + interiorWidth, interiorY + interiorHeight); // Bottom-right of opening
+                    ctx.lineTo(interiorX + interiorWidth * 0.9, interiorY + interiorHeight * 0.9); // Receding right
+                    ctx.lineTo(interiorX + interiorWidth * 0.1, interiorY + interiorHeight * 0.9); // Receding left
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Add a subtle light effect from the ceiling
+                    const lightGradient = ctx.createRadialGradient(
+                        interiorX + interiorWidth / 2, interiorY + interiorHeight * 0.2, 5, // Light source high up
+                        interiorX + interiorWidth / 2, interiorY + interiorHeight * 0.2, interiorWidth * 0.6 // Radius of light
+                    );
+                    lightGradient.addColorStop(0, 'rgba(255, 255, 220, 0.7)'); // Brightest at source
+                    lightGradient.addColorStop(1, 'rgba(255, 255, 220, 0)');   // Fades out
+                    ctx.fillStyle = lightGradient;
+                    ctx.fillRect(interiorX, interiorY, interiorWidth, interiorHeight); // Apply over the interior
+
+
+                    // Optional: Add a simple shelf silhouette (drawn darker)
+                    ctx.fillStyle = '#555555'; // Medium grey for shelf
+                    const shelfHeight = interiorHeight * 0.05;
+                    const shelfWidth = interiorWidth * 0.4;
+                    const shelfX = interiorX + (interiorWidth - shelfWidth) / 2;
+                    const shelfY = interiorY + interiorHeight * 0.3; // Roughly mid-height on back wall
+                    ctx.fillRect(shelfX, shelfY, shelfWidth, shelfHeight);
+
+                    // --- Draw Door on Left Backside with Steps ---
+                    const sideDoorWidth = interiorWidth * 0.2;
+                    const sideDoorHeight = interiorHeight * 0.6;
+                    const sideDoorX = interiorX + interiorWidth * 0.1; // Offset from left edge of interior
+                    const sideDoorY = interiorY + interiorHeight - sideDoorHeight - (interiorHeight * 0.05); // Adjust for floor perspective
+
+                    // Draw the side door
+                    ctx.fillStyle = '#7a4a2a'; // Wood-like brown for the door
+                    ctx.fillRect(sideDoorX, sideDoorY, sideDoorWidth, sideDoorHeight);
+
+                    // Draw door frame
+                    ctx.strokeStyle = '#4a2a1a'; // Darker brown for frame
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(sideDoorX, sideDoorY, sideDoorWidth, sideDoorHeight);
+
+                    // Draw door handle (simple circle)
+                    ctx.fillStyle = '#aaaaaa'; // Grey for handle
+                    ctx.beginPath();
+                    ctx.arc(sideDoorX + sideDoorWidth * 0.8, sideDoorY + sideDoorHeight * 0.5, sideDoorWidth * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Draw steps leading up to the door
+                    const numSteps = 3;
+                    const stepHeight = (interiorY + interiorHeight - (sideDoorY + sideDoorHeight)) / numSteps;
+                    const stepDepth = interiorWidth * 0.05; // How much each step recedes
+                    const stepColor = '#555555'; // Stone-like grey for steps
+
+                    for (let i = 0; i < numSteps; i++) {
+                        const currentStepBottomY = interiorY + interiorHeight - (stepHeight * i);
+                        const currentStepTopY = currentStepBottomY - stepHeight;
+                        const currentStepLeftX = sideDoorX - (stepDepth * (numSteps - i)); // Recede left
+                        const currentStepRightX = sideDoorX + sideDoorWidth + (stepDepth * (numSteps - i)); // Recede right
+
+                        // Draw top surface of the step
+                        ctx.fillStyle = stepColor;
+                        ctx.beginPath();
+                        ctx.moveTo(currentStepLeftX, currentStepTopY);
+                        ctx.lineTo(currentStepRightX, currentStepTopY);
+                        ctx.lineTo(currentStepRightX - stepDepth, currentStepBottomY); // Connect to previous step's bottom right
+                        ctx.lineTo(currentStepLeftX + stepDepth, currentStepBottomY); // Connect to previous step's bottom left
+                        ctx.closePath();
+                        ctx.fill();
+
+                        // Draw front face of the step
+                        ctx.fillStyle = '#444444'; // Darker for front face
+                        ctx.beginPath();
+                        ctx.moveTo(currentStepLeftX, currentStepTopY);
+                        ctx.lineTo(currentStepRightX, currentStepTopY);
+                        ctx.lineTo(currentStepRightX, currentStepBottomY);
+                        ctx.lineTo(currentStepLeftX, currentStepBottomY);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    // --- End of Door and Steps Drawing ---
+
+                    // --- Draw Calculated Spring Value on Back Wall Display ---
+                    const calculatedValue = resultSumDisplay.textContent;
+                    if (calculatedValue !== "0.00" && calculatedValue !== "Error" && isFlashing) { // Only draw if flashing is true
+                        const displayWidth = interiorWidth * 0.4; // Keeping it reasonable
+                        const displayHeight = interiorHeight * 0.25;
+                        // Position to the right of the side door, with some gap
+                        const displayX = interiorX + interiorWidth * 0.45; // Adjusted starting X to be further right
+                        const displayY = interiorY + interiorHeight * 0.25; // Adjusted Y to be further down
+
+                        // Draw the display background
+                        ctx.fillStyle = '#1a1a1a'; // Very dark grey/black for display background
+                        ctx.fillRect(displayX, displayY, displayWidth, displayHeight);
+
+                        // Draw a subtle border/frame for the display
+                        ctx.strokeStyle = '#888888';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(displayX, displayY, displayWidth, displayHeight);
+
+                        // Draw the text
+                        ctx.font = 'bold ' + (displayHeight * 0.6) + 'px "Inter", sans-serif'; // Increased font size relative to display height
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle'; // Center text vertically
+
+                        // Create a glowing effect for the text
+                        ctx.shadowColor = 'rgba(0, 255, 255, 0.7)'; // Cyan glow
+                        ctx.shadowBlur = 20; // Increased blur for more glow
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 0;
+
+                        ctx.fillStyle = '#00FFFF'; // Bright cyan text color
+                        ctx.fillText(calculatedValue, displayX + displayWidth / 2, displayY + displayHeight / 2);
+
+                        // Reset shadow properties for other drawings
+                        ctx.shadowColor = 'transparent';
+                        ctx.shadowBlur = 0;
+                    }
+                }
+
+
+                // Draw the garage door frame (around the opening)
+                const frameThickness = 5;
+                ctx.fillStyle = '#333333'; // Darker grey for the frame
+                // Top frame
+                ctx.fillRect(openingX - frameThickness, openingY - frameThickness, openingWidth + (frameThickness * 2), frameThickness);
+                // Bottom frame (at ground level)
+                ctx.fillRect(openingX - frameThickness, openingY + openingHeight, openingWidth + (frameThickness * 2), frameThickness);
+                // Left frame
+                ctx.fillRect(openingX - frameThickness, openingY - frameThickness, frameThickness, openingHeight + (frameThickness * 2));
+                // Right frame
+                ctx.fillRect(openingX + openingWidth, openingY - frameThickness, frameThickness, openingHeight + (frameThickness * 2));
+
+
+                // Calculate current door height for animation
+                const currentDoorHeight = openingHeight * (1 - doorOpenProgress);
+                const currentDoorY = openingY + (openingHeight * doorOpenProgress); // Door moves up as it opens
+
+                // Draw the garage door
+                ctx.fillStyle = '#444444'; // Dark grey for the door
+                ctx.fillRect(openingX, currentDoorY, openingWidth, currentDoorHeight);
+
+                // Draw horizontal panels on the door
+                ctx.strokeStyle = '#222222'; // Darker lines for panels
+                ctx.lineWidth = 2;
+                const panelCount = 4;
+                const panelHeight = openingHeight / panelCount; // Height of a single panel
+                for (let i = 0; i < panelCount; i++) {
+                    const panelY = currentDoorY + (currentDoorHeight / panelCount) * i;
+                    // Only draw if the panel line is within the visible part of the door
+                    if (panelY > currentDoorY && panelY < currentDoorY + currentDoorHeight) {
+                        ctx.beginPath();
+                        ctx.moveTo(openingX, panelY);
+                        ctx.lineTo(openingX + openingWidth, panelY);
+                        ctx.stroke();
+                    }
+                }
+
+                // Draw windows on the door panels
+                const windowsPerPanel = 4; // Now 4 windows on one panel
+                const windowHeight = panelHeight * 0.4;
+                const panelInnerWidth = openingWidth - (2 * ctx.lineWidth); // Account for door borders
+                const totalWindowWidth = panelInnerWidth * 0.8; // Increased total width for 4 windows
+                const windowWidth = totalWindowWidth / windowsPerPanel;
+                const horizontalGap = (panelInnerWidth - (windowWidth * windowsPerPanel)) / (windowsPerPanel + 1); // Space between windows and edges
+                const windowVerticalPadding = (panelHeight - windowHeight) / 2; // Vertically center in panel
+
+                ctx.fillStyle = 'rgba(173, 216, 230, 0.7)'; // Light blue translucent for glass
+                ctx.strokeStyle = '#222222'; // Dark border for windows
+                ctx.lineWidth = 1;
+
+                // Target panel index (second from top, 0-indexed)
+                const targetPanelIndex = 1;
+
+                // Calculate the fixed Y position of the top of the target panel when the door is fully closed
+                const fixedTargetPanelTopY = openingY + (panelHeight * targetPanelIndex);
+
+                // Draw windows for the target panel
+                for (let j = 0; j < windowsPerPanel; j++) {
+                    const windowX = openingX + horizontalGap + (j * (windowWidth + horizontalGap));
+                    const windowY = fixedTargetPanelTopY + windowVerticalPadding;
+
+                    // Calculate the visible portion of the window
+                    const visibleWindowTop = Math.max(windowY, currentDoorY);
+                    const visibleWindowBottom = Math.min(windowY + windowHeight, currentDoorY + currentDoorHeight);
+                    const visibleWindowHeight = visibleWindowBottom - visibleWindowTop;
+
+                    // Only draw if there's a visible part of the window
+                    if (visibleWindowHeight > 0 && windowX + windowWidth > openingX && windowX < openingX + openingWidth) {
+                        ctx.fillRect(windowX, visibleWindowTop, windowWidth, visibleWindowHeight);
+                        // Adjust strokeRect to only draw the visible portion of the border
+                        ctx.strokeRect(windowX, visibleWindowTop, windowWidth, visibleWindowHeight);
+                    }
+                }
+            }
+
+            // Animation loop for opening and closing the door
+            function animateDoor(timestamp) {
+                if (!animationStartTime) animationStartTime = timestamp;
+                const elapsed = timestamp - animationStartTime;
+
+                if (animationPhase === 'opening') {
+                    doorOpenProgress = Math.min(elapsed / openDuration, 1);
+                    if (doorOpenProgress === 1) {
+                        animationPhase = 'open_paused';
+                        animationStartTime = timestamp; // Reset start time for pause
+                    }
+                } else if (animationPhase === 'open_paused') {
+                    if (elapsed >= pauseDuration) {
+                        animationPhase = 'closing';
+                        animationStartTime = timestamp; // Reset start time for closing
+                    }
+                    // Flashing logic during pause
+                    if (elapsed - lastFlashToggleTime > flashInterval) {
+                        isFlashing = !isFlashing;
+                        lastFlashToggleTime = elapsed;
+                    }
+                } else if (animationPhase === 'closing') {
+                    // Progress for closing goes from 1 down to 0
+                    doorOpenProgress = 1 - Math.min(elapsed / closeDuration, 1);
+                    if (doorOpenProgress === 0) {
+                        animationPhase = 'closed';
+                        animationFrameId = null; // Animation finished
+                        animationStartTime = null; // Reset for next animation
+                        isFlashing = true; // Ensure it's visible when closed or during next opening
+                        lastFlashToggleTime = 0;
+                    }
+                }
+
+                drawGarageScene(); // Redraw with new progress
+
+                if (animationPhase !== 'closed') {
+                    animationFrameId = requestAnimationFrame(animateDoor);
+                }
+            }
+
+            // Function to reset the door to closed state and prepare for new animation
+            function initiateDoorAnimation() {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                doorOpenProgress = 0;
+                animationStartTime = null;
+                animationPhase = 'opening';
+                isFlashing = true; // Ensure it starts visible
+                lastFlashToggleTime = 0; // Reset flash timer
+                requestAnimationFrame(animateDoor);
+            }
 
             /**
              * Displays a message in the message box.
@@ -119,13 +440,11 @@
                 // Validate inputs
                 if (isNaN(id) || isNaN(wiresize) || isNaN(springlength)) {
                     showMessage("Please enter valid numbers for all fields.", "error");
-                    resultSumDisplay.textContent = "Error";
                     return;
                 }
 
                 if (wiresize === 0) {
                     showMessage("Wire size cannot be zero to avoid division by zero.", "error");
-                    resultSumDisplay.textContent = "Error";
                     return;
                 }
 
@@ -133,23 +452,27 @@
                     // Apply the formula: var sum = ((id + wiresize) * 3.14) * (springlength / wiresize);
                     const sum = ((id + wiresize) * 3.14) * (springlength / wiresize);
 
-                    // Display the result, formatted to two decimal places
+                    // Store the result in the hidden HTML element
                     resultSumDisplay.textContent = sum.toFixed(2);
-                    showMessage("Calculation successful!", "success");
+                    showMessage("Calculation successful! Animating garage door...", "success");
+
+                    // Start garage door animation
+                    initiateDoorAnimation();
 
                 } catch (error) {
                     // Catch any unexpected errors during calculation
                     showMessage("An error occurred during calculation. Please check inputs.", "error");
                     console.error("Calculation error:", error);
-                    resultSumDisplay.textContent = "Error";
+                    resultSumDisplay.textContent = "Error"; // Still update for consistency, though not displayed
                 }
             }
 
             // Attach event listener to the button
             calculateButton.addEventListener('click', calculateSum);
 
-            // Initial calculation on page load (optional, can be removed if not desired)
-            // calculateSum();
+            // Initial setup: Draw the closed door and resize canvas
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas); // Make canvas responsive to window resize
         }); // End of DOMContentLoaded listener
     </script>
 </body>
