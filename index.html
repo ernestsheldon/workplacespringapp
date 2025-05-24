@@ -3,126 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formula Calculator</title>
+    <title>Spring Length Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom font for better aesthetics */
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* Styling for the copyright notice */
+        .copyright {
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #e0e0e0; /* Lighter grey for copyright */
+            border-top: 1px solid #a0a0a0; /* Darker grey border */
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #444; /* Darker text for better contrast */
+        }
+
+        .copyright a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .copyright a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md space-y-6 border border-gray-200">
-        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-6">Formula Calculator</h1>
+<body class="bg-gradient-to-br from-gray-300 to-gray-500 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md space-y-6 border border-gray-300">
+        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-6">Spring Length Calculator</h1>
 
         <div class="space-y-4">
             <div>
-                <label for="input-id" class="block text-sm font-medium text-gray-700 mb-1">ID:</label>
+                <label for="input-id" class="block text-sm font-medium text-gray-700 mb-1">ID (e.g., Spring Diameter):</label>
                 <input type="number" id="input-id" placeholder="Enter ID value"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm transition duration-150 ease-in-out">
+                       class="w-full px-4 py-2 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out">
             </div>
             <div>
-                <label for="input-wiresize" class="block text-sm font-medium text-gray-700 mb-1">Wire Size:</label>
+                <label for="input-wiresize" class="block text-sm font-medium text-gray-700 mb-1">Wire Size (e.g., Wire Diameter):</label>
                 <input type="number" id="input-wiresize" placeholder="Enter wire size value"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm transition duration-150 ease-in-out">
+                       class="w-full px-4 py-2 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out">
             </div>
             <div>
-                <label for="input-springlength" class="block text-sm font-medium text-gray-700 mb-1">Spring Length:</label>
+                <label for="input-springlength" class="block text-sm font-medium text-gray-700 mb-1">Spring Length (e.g., Coil Length):</label>
                 <input type="number" id="input-springlength" placeholder="Enter spring length value"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm transition duration-150 ease-in-out">
+                       class="w-full px-4 py-2 border border-gray-400 rounded-lg focus:ring-blue-600 focus:border-blue-600 shadow-sm transition duration-150 ease-in-out">
             </div>
         </div>
 
         <button id="calculate-button"
-                class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold text-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out shadow-md">
-            Calculate Sum
+                class="w-full bg-blue-700 text-white py-3 rounded-lg font-semibold text-lg hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition duration-150 ease-in-out shadow-md">
+            Calculate Spring Value
         </button>
 
-        <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
-            <p class="text-sm font-medium text-blue-700">Calculated Sum:</p>
-            <p id="result-sum" class="text-2xl font-bold text-blue-800 mt-1">0.00</p>
+        <div class="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-300 text-center">
+            <p class="text-sm font-medium text-gray-700">Calculated Spring Value:</p>
+            <p id="result-sum" class="text-2xl font-bold text-gray-800 mt-1">0.00</p>
         </div>
 
         <div id="message-box" class="hidden p-3 rounded-lg text-sm text-center" role="alert"></div>
+
+        <div class="copyright">
+            &copy; 2024 Ernest Sheldon - All Rights Reserved.
+        </div>
     </div>
 
     <script>
-        // Get references to HTML elements
-        const idInput = document.getElementById('input-id');
-        const wiresizeInput = document.getElementById('input-wiresize');
-        const springlengthInput = document.getElementById('input-springlength');
-        const calculateButton = document.getElementById('calculate-button');
-        const resultSumDisplay = document.getElementById('result-sum');
-        const messageBox = document.getElementById('message-box');
+        // Ensure the DOM is fully loaded before running the script
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get references to HTML elements
+            const idInput = document.getElementById('input-id');
+            const wiresizeInput = document.getElementById('input-wiresize');
+            const springlengthInput = document.getElementById('input-springlength');
+            const calculateButton = document.getElementById('calculate-button');
+            const resultSumDisplay = document.getElementById('result-sum');
+            const messageBox = document.getElementById('message-box');
 
-        /**
-         * Displays a message in the message box.
-         * @param {string} message - The message to display.
-         * @param {string} type - The type of message ('success', 'error', 'info').
-         */
-        function showMessage(message, type) {
-            messageBox.textContent = message;
-            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            /**
+             * Displays a message in the message box.
+             * @param {string} message - The message to display.
+             * @param {string} type - The type of message ('success', 'error', 'info').
+             */
+            function showMessage(message, type) {
+                messageBox.textContent = message;
+                messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
 
-            if (type === 'error') {
-                messageBox.classList.add('bg-red-100', 'text-red-800');
-            } else if (type === 'success') {
-                messageBox.classList.add('bg-green-100', 'text-green-800');
-            } else { // default to info
-                messageBox.classList.add('bg-blue-100', 'text-blue-800');
-            }
-            messageBox.classList.remove('hidden');
+                if (type === 'error') {
+                    messageBox.classList.add('bg-red-100', 'text-red-800');
+                } else if (type === 'success') {
+                    messageBox.classList.add('bg-green-100', 'text-green-800');
+                } else { // default to info
+                    messageBox.classList.add('bg-blue-100', 'text-blue-800');
+                }
+                messageBox.classList.remove('hidden');
 
-            // Hide message after 5 seconds
-            setTimeout(() => {
-                messageBox.classList.add('hidden');
-            }, 5000);
-        }
-
-        /**
-         * Calculates the sum based on the provided formula.
-         */
-        function calculateSum() {
-            // Get values from input fields and convert to numbers
-            const id = parseFloat(idInput.value);
-            const wiresize = parseFloat(wiresizeInput.value);
-            const springlength = parseFloat(springlengthInput.value);
-
-            // Validate inputs
-            if (isNaN(id) || isNaN(wiresize) || isNaN(springlength)) {
-                showMessage("Please enter valid numbers for all fields.", "error");
-                resultSumDisplay.textContent = "Error";
-                return;
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    messageBox.classList.add('hidden');
+                }, 5000);
             }
 
-            if (wiresize === 0) {
-                showMessage("Wire size cannot be zero to avoid division by zero.", "error");
-                resultSumDisplay.textContent = "Error";
-                return;
+            /**
+             * Calculates the sum based on the provided formula.
+             */
+            function calculateSum() {
+                // Get values from input fields and convert to numbers
+                const id = parseFloat(idInput.value);
+                const wiresize = parseFloat(wiresizeInput.value);
+                const springlength = parseFloat(springlengthInput.value);
+
+                // Validate inputs
+                if (isNaN(id) || isNaN(wiresize) || isNaN(springlength)) {
+                    showMessage("Please enter valid numbers for all fields.", "error");
+                    resultSumDisplay.textContent = "Error";
+                    return;
+                }
+
+                if (wiresize === 0) {
+                    showMessage("Wire size cannot be zero to avoid division by zero.", "error");
+                    resultSumDisplay.textContent = "Error";
+                    return;
+                }
+
+                try {
+                    // Apply the formula: var sum = ((id + wiresize) * 3.14) * (springlength / wiresize);
+                    const sum = ((id + wiresize) * 3.14) * (springlength / wiresize);
+
+                    // Display the result, formatted to two decimal places
+                    resultSumDisplay.textContent = sum.toFixed(2);
+                    showMessage("Calculation successful!", "success");
+
+                } catch (error) {
+                    // Catch any unexpected errors during calculation
+                    showMessage("An error occurred during calculation. Please check inputs.", "error");
+                    console.error("Calculation error:", error);
+                    resultSumDisplay.textContent = "Error";
+                }
             }
 
-            try {
-                // Apply the formula: var sum = ((id + wiresize) * 3.14) * (springlength / wiresize);
-                const sum = ((id + wiresize) * 3.14) * (springlength / wiresize);
+            // Attach event listener to the button
+            calculateButton.addEventListener('click', calculateSum);
 
-                // Display the result, formatted to two decimal places
-                resultSumDisplay.textContent = sum.toFixed(2);
-                showMessage("Calculation successful!", "success");
-
-            } catch (error) {
-                // Catch any unexpected errors during calculation
-                showMessage("An error occurred during calculation. Please check inputs.", "error");
-                console.error("Calculation error:", error);
-                resultSumDisplay.textContent = "Error";
-            }
-        }
-
-        // Attach event listener to the button
-        calculateButton.addEventListener('click', calculateSum);
-
-        // Initial calculation on page load (optional, can be removed if not desired)
-        // calculateSum();
+            // Initial calculation on page load (optional, can be removed if not desired)
+            // calculateSum();
+        }); // End of DOMContentLoaded listener
     </script>
 </body>
 </html>
